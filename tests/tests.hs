@@ -56,15 +56,10 @@ tests =
         nn = nonNegative
         
 ok :: String -> Z3 AST -> IO (Maybe String)
-ok s p = test' (mkNot =<< p) Unsat s
+ok s p = test (verify p) True s
 
 no :: String -> Z3 AST -> IO (Maybe String)
-no s p = test' (mkNot =<< p) Sat ("[NOT] " ++ s)
-
-test' t c s = test (quickEval t) c s
-
-quickEval :: Z3 AST -> IO Result
-quickEval p = evalZ3 (p >>= assert >> check)
+no s p = test (verify p) False ("[NOT] " ++ s)
 
 test :: (Monad m, Eq a) => m a -> a -> String -> m (Maybe String)
 test t c s = do r <- (== c) <$> t

@@ -9,6 +9,16 @@ import DSV.Effect
 import DSV.Contract
 import DSV.Effect.Bank
 
+-- * Verify a proposition by checking for UNSAT of its negation
+verify :: Z3 AST -> IO Bool
+verify p = interp <$> evalZ3 (p >>= mkNot >>= assert >> check)
+  where interp Unsat = True
+        interp _ = False
+
+-- * Check that a program is safe, given a contract and invariant
+program :: (Effect e) => [e] -> Contract e -> Pred -> Z3 AST
+program es c i = mkAnd =<< mapM (consafe c i) es
+
 safe :: (Effect e) => Pred -> e -> Z3 AST
 safe i e = prePost (i,i) (eff e)
 
@@ -30,6 +40,3 @@ consafe :: (Effect e) => Contract e -> Pred -> e -> Z3 AST
 consafe c i e = do comps <- mapM (\e0 -> comp c i (e0,e)) allEffects
                    seqsafe' <- seqsafe i e
                    mkAnd (seqsafe' : comps)
-
-program :: (Effect e) => [e] -> Contract e -> Pred -> Z3 AST
-program es c i = mkAnd =<< mapM (consafe c i) es
