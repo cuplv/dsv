@@ -4,14 +4,15 @@ import Z3.Monad
 
 import DSV.Logic
 import DSV.Effect
-
-data Bank = Wd | Dp deriving (Show,Eq,Ord)
+import DSV.Contract
 
 zero :: (MonadZ3 m) => m AST
 zero = mkInteger 0
 
 one :: (MonadZ3 m) => m AST
 one = mkInteger 1
+
+data Bank = Wd | Dp deriving (Show,Eq,Ord)
 
 instance Effect Bank where
   allEffects = [Wd,Dp]
@@ -24,8 +25,21 @@ instance Effect Bank where
                   Wd -> mkSub
                   Dp -> mkAdd) [a,one']
 
-  cvis Wd Wd = True
-  cvis _ _ = False
+data BadBank = Bad Bank deriving (Show,Eq,Ord)
+
+instance Effect BadBank where
+  allEffects = map Bad allEffects
+  
+  wp (Bad Wd) v = mkTrue -- remove WP from withdraws
+  wp (Bad e) v = wp e v -- keep others the same
+  
+  eff (Bad e) a = eff e a
 
 nonNegative :: Pred
 nonNegative a = mkGe a =<< zero
+
+bankRules (Wd,Wd) = True
+bankRules _ = False
+
+bankC :: Contract Bank
+bankC = Vis bankRules

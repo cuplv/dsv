@@ -6,6 +6,7 @@ import Data.Maybe
 
 import DSV.Logic
 import DSV.Effect
+import DSV.Contract
 import DSV.Effect.Bank
 
 safe :: (Effect e) => Pred -> e -> Z3 AST
@@ -14,29 +15,18 @@ safe i e = prePost (i,i) (eff e)
 seqsafe :: (Effect e) => Pred -> e -> Z3 AST
 seqsafe i e = prePost (wp e,i) (eff e)
 
-strong :: (Effect e) => (e,e) -> Z3 AST
-strong (e0,e1) = if cvis e0 e1
-                    then mkTrue
-                    else mkFalse
+strong :: (Effect e) => Contract e -> (e,e) -> Z3 AST
+strong c (e0,e1) = if vis c (e0,e1)
+                      then mkTrue
+                      else mkFalse
 
-comp :: (Effect e) => Pred -> (e,e) -> Z3 AST
-comp i (e0,e1) = do safe' <- safe (wp e1) e0
-                    strong' <- strong (e0,e1)
-                    mkOr [strong',safe']
+comp :: (Effect e) => Contract e -> Pred -> (e,e) -> Z3 AST
+comp c i (e0,e1) = do safe' <- safe (wp e1) e0
+                      strong' <- strong c (e0,e1)
+                      mkOr [strong',safe']
 
-consafe :: (Effect e) => Pred -> e -> Z3 AST
-consafe i e = mkAnd =<< mapM (\e0 -> comp i (e0,e)) allEffects
-
-script2 :: Z3 Result
-script2 = do -- assert =<< mkNot =<< consafe nonNegative Dp
-             -- assert =<< mkNot =<< consafe nonNegative Wd
-             dp' <- mkNot =<< consafe nonNegative Dp
-             wd' <- mkNot =<< consafe nonNegative Wd
-             assert =<< mkOr [dp',wd']
-             -- assert =<< mkNot =<< comp nonNegative (Dp,Wd)
-             -- assert =<< mkNot =<< comp nonNegative (Dp,Dp)
-             -- assert =<< mkNot =<< comp nonNegative (Wd,Dp)
-             check
+consafe :: (Effect e) => Contract e -> Pred -> e -> Z3 AST
+consafe c i e = mkAnd =<< mapM (\e0 -> comp c i (e0,e)) allEffects
 
 script :: Z3 (Maybe [Integer])
 script = do a <- mkFreshIntVar "a"

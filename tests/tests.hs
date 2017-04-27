@@ -7,6 +7,7 @@ import Z3.Monad
 
 import DSV
 import DSV.Effect
+import DSV.Contract
 import DSV.Effect.Bank
 
 main :: IO ()
@@ -23,15 +24,17 @@ tests =
   ,test' (do dp' <- mkNot =<< seqsafe nn Dp
              wd' <- mkNot =<< safe nn Wd
              mkOr [dp',wd']) Sat "(not) joint seqsafe Dp and safe Wd"
-  ,test' (mkNot =<< consafe nn Dp) Unsat "consafe of Dp"
-  ,test' (mkNot =<< consafe nn Wd) Unsat "consafe of Wd"
-  ,test' (do dp' <- mkNot =<< consafe nn Dp
-             wd' <- mkNot =<< consafe nn Wd
+  ,test' (mkNot =<< consafe c nn Dp) Unsat "consafe of Dp"
+  ,test' (mkNot =<< consafe c nn Wd) Unsat "consafe of Wd"
+  ,test' (do dp' <- mkNot =<< consafe c nn Dp
+             wd' <- mkNot =<< consafe c nn Wd
              mkOr [dp',wd']) Unsat "joint consafe Dp and consafe Wd"]
+  where c = bankC
+        cE = emptyC
+        cS = strongC
+        nn = nonNegative
 
 test' t c s = test (quickEval t) c s
-
-nn = nonNegative
 
 quickEval :: Z3 AST -> IO Result
 quickEval p = evalZ3 (p >>= assert >> check)

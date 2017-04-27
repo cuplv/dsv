@@ -12,6 +12,7 @@ cabal-version:       >=1.10
 library
   exposed-modules:     DSV
                      , DSV.Logic
+                     , DSV.Contract
                      , DSV.Effect
                      , DSV.Effect.Bank
   build-depends:       base >=4.9 && <4.10
