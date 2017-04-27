@@ -15,24 +15,51 @@ main = report tests
 
 tests :: [IO (Maybe String)]
 tests = 
-  [test' (mkNot =<< safe nn Dp) Unsat "safe of Dp"
-  ,test' (mkNot =<< safe nn Wd) Sat "(not) safe of Wd"
-  ,test' (mkNot =<< seqsafe nn Wd) Unsat "seqsafe of Dp"
-  ,test' (do dp' <- mkNot =<< safe nn Dp
-             wd' <- mkNot =<< seqsafe nn Wd
-             mkOr [dp',wd']) Unsat "joint safe Dp and seqsafe Wd"
-  ,test' (do dp' <- mkNot =<< seqsafe nn Dp
-             wd' <- mkNot =<< safe nn Wd
-             mkOr [dp',wd']) Sat "(not) joint seqsafe Dp and safe Wd"
-  ,test' (mkNot =<< consafe c nn Dp) Unsat "consafe of Dp"
-  ,test' (mkNot =<< consafe c nn Wd) Unsat "consafe of Wd"
-  ,test' (do dp' <- mkNot =<< consafe c nn Dp
-             wd' <- mkNot =<< consafe c nn Wd
-             mkOr [dp',wd']) Unsat "joint consafe Dp and consafe Wd"]
+  [ok "safe of Dp" (safe nn Dp)
+  ,no "safe of Wd" (safe nn Wd)
+  ,ok "seqsafe of Dp" (seqsafe nn Dp)
+  ,ok "seqsafe of Wp" (seqsafe nn Wd)
+  ,no "seqsafe of Bad Wp" (seqsafe nn (Bad Wd))
+  ,ok "joint safe Dp and seqsafe Wd" 
+      (do dp' <- safe nn Dp
+          wd' <- seqsafe nn Wd
+          mkAnd [dp',wd'])
+  ,no "joint seqsafe Dp and safe Wd" 
+      (do dp' <- seqsafe nn Dp
+          wd' <- safe nn Wd
+          mkAnd [dp',wd'])
+  ,ok "consafe of Dp" (consafe c nn Dp)
+  ,ok "consafe of Wd" (consafe c nn Wd)
+  ,no "consafe of Bad Wd" (consafe c' nn (Bad Wd))
+  ,ok "joint consafe Dp and consafe Wd" 
+      (do dp' <- consafe c nn Dp
+          wd' <- consafe c nn Wd
+          mkAnd [dp',wd'])
+  ,ok "good bank, good contract" 
+      (program (allEffects::[Bank]) c nn) 
+
+  ,no "good bank, empty contract" 
+      (program (allEffects::[Bank]) cE nn)
+
+  ,ok "good bank, over-strong contract" 
+      (program (allEffects::[Bank]) cS nn)
+
+  ,no "bad bank, good contract" 
+      (program (allEffects::[BadBank]) c' nn)
+
+  ,no "bad bank, over-strong contract" 
+      (program (allEffects::[BadBank]) cS nn)]
   where c = bankC
+        c' = badBankC
         cE = emptyC
         cS = strongC
         nn = nonNegative
+        
+ok :: String -> Z3 AST -> IO (Maybe String)
+ok s p = test' (mkNot =<< p) Unsat s
+
+no :: String -> Z3 AST -> IO (Maybe String)
+no s p = test' (mkNot =<< p) Sat ("[NOT] " ++ s)
 
 test' t c s = test (quickEval t) c s
 

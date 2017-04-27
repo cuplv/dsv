@@ -41,5 +41,11 @@ nonNegative a = mkGe a =<< zero
 bankRules (Wd,Wd) = True
 bankRules _ = False
 
+badBankRules (Bad Wd,Bad Wd) = True
+badBankRules _ = False
+
 bankC :: Contract Bank
 bankC = Vis bankRules
+
+badBankC :: Contract BadBank
+badBankC = Vis badBankRules
