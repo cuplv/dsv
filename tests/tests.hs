@@ -3,7 +3,7 @@ module Main where
 import System.Exit
 import Data.Maybe
 
-import Z3.Monad
+import Language.SMTLib2
 
 import DSV
 import DSV.Effect
@@ -20,21 +20,12 @@ tests =
   ,ok "seqsafe of Dp" (seqsafe nn Dp)
   ,ok "seqsafe of Wp" (seqsafe nn Wd)
   ,no "seqsafe of Bad Wp" (seqsafe nn (Bad Wd))
-  ,ok "joint safe Dp and seqsafe Wd" 
-      (do dp' <- safe nn Dp
-          wd' <- seqsafe nn Wd
-          mkAnd [dp',wd'])
-  ,no "joint seqsafe Dp and safe Wd" 
-      (do dp' <- seqsafe nn Dp
-          wd' <- safe nn Wd
-          mkAnd [dp',wd'])
+  ,ok "joint safe Dp and seqsafe Wd" (safe nn Dp .&. seqsafe nn Wd)
+  ,no "joint seqsafe Dp and safe Wd" (safe nn Wd .&. seqsafe nn Dp)
   ,ok "consafe of Dp" (consafe c nn Dp)
   ,ok "consafe of Wd" (consafe c nn Wd)
   ,no "consafe of Bad Wd" (consafe c' nn (Bad Wd))
-  ,ok "joint consafe Dp and consafe Wd" 
-      (do dp' <- consafe c nn Dp
-          wd' <- consafe c nn Wd
-          mkAnd [dp',wd'])
+  ,ok "joint consafe Dp and consafe Wd" (consafe c nn Dp .&. consafe c nn Wd)
   ,ok "good bank, good contract" 
       (program (allEffects::[Bank]) c nn) 
 
@@ -55,10 +46,7 @@ tests =
         cS = strongC
         nn = nonNegative
         
-ok :: String -> Z3 AST -> IO (Maybe String)
 ok s p = test (verify p) True s
-
-no :: String -> Z3 AST -> IO (Maybe String)
 no s p = test (verify p) False ("[NOT] " ++ s)
 
 test :: (Monad m, Eq a) => m a -> a -> String -> m (Maybe String)

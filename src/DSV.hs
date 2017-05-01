@@ -1,42 +1,71 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE GADTs #-}
+
 module DSV where
 
-import Z3.Monad
-import Control.Monad.Trans (liftIO)
-import Data.Maybe
+import Language.SMTLib2
+import Language.SMTLib2.Pipe
+import Language.SMTLib2.Debug
 
 import DSV.Logic
 import DSV.Effect
 import DSV.Contract
 import DSV.Effect.Bank
 
+z3Path = "/nix/store/r609yd3wybkjyxrc00ism8j2p29xvw6s-z3-4.5.0/bin/z3"
+
+z3Pipe = createPipe z3Path ["-smt2","-in"]
+
 -- * Verify a proposition by checking for UNSAT of its negation
-verify :: Z3 AST -> IO Bool
-verify p = interp <$> evalZ3 (p >>= mkNot >>= assert >> check)
-  where interp Unsat = True
+verify = verify' z3Pipe
+debug = verify' (debugBackend <$> z3Pipe)
+
+verify' :: (Backend b) => SMTMonad b b -> SMT b (Expr b BoolType) -> SMTMonad b Bool
+verify' b p = withBackend b (interp <$> p')
+  where p' = not' p >>= assert >> checkSat
+        interp Unsat = True
         interp _ = False
 
 -- * Check that a program is safe, given a contract and invariant
-program :: (Effect e) => [e] -> Contract e -> Pred -> Z3 AST
-program es c i = mkAnd =<< mapM (consafe c i) es
+program :: (Backend b, Effect e) 
+        => [e] 
+        -> Contract e 
+        -> Pr b IntType 
+        -> SMT b (Expr b BoolType)
+program es c i = and' (map (consafe c i) es)
 
-safe :: (Effect e) => Pred -> e -> Z3 AST
-safe i e = prePost (i,i) (eff e)
+safe :: (Backend b, Effect e) 
+     => Pr b IntType
+     -> e 
+     -> SMT b (Expr b BoolType)
+safe i e = triple (i,i) (eff e)
 
-seqsafe :: (Effect e) => Pred -> e -> Z3 AST
-seqsafe i e = do let pre a = mkAnd =<< sequence [i a,wp e a]
-                 prePost (pre,i) (eff e)
+seqsafe :: (Backend b, Effect e) 
+        => Pr b IntType
+        -> e 
+        -> SMT b (Expr b BoolType)
+seqsafe i e = let pre a = i a .&. wp e a
+              in triple (pre,i) (eff e)
 
-strong :: (Effect e) => Contract e -> (e,e) -> Z3 AST
+strong :: (Backend b, Effect e) 
+       => Contract e 
+       -> (e,e) 
+       -> SMT b (Expr b BoolType)
 strong c (e0,e1) = if vis c (e0,e1)
-                      then mkTrue
-                      else mkFalse
+                      then true
+                      else false
 
-comp :: (Effect e) => Contract e -> Pred -> (e,e) -> Z3 AST
-comp c i (e0,e1) = do safe' <- safe (wp e1) e0
-                      strong' <- strong c (e0,e1)
-                      mkOr [strong',safe']
+comp :: (Backend b, Effect e) 
+     => Contract e 
+     -> Pr b IntType
+     -> (e,e) 
+     -> SMT b (Expr b BoolType)
+comp c i (e0,e1) = strong c (e0,e1) .|. safe (wp e1) e0
 
-consafe :: (Effect e) => Contract e -> Pred -> e -> Z3 AST
-consafe c i e = do comps <- mapM (\e0 -> comp c i (e0,e)) allEffects
-                   seqsafe' <- seqsafe i e
-                   mkAnd (seqsafe' : comps)
+consafe :: (Backend b, Effect e) 
+        => Contract e 
+        -> Pr b IntType
+        -> e 
+        -> SMT b (Expr b BoolType)
+consafe c i e = seqsafe i e .&. (and' (map (\e0 -> comp c i (e0,e)) allEffects))
