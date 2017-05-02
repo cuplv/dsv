@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE GADTs #-}
@@ -7,15 +8,20 @@ module DSV where
 import Language.SMTLib2
 import Language.SMTLib2.Pipe
 import Language.SMTLib2.Debug
+import Turtle.Prelude (which)
 
 import DSV.Logic
 import DSV.Effect
 import DSV.Contract
 import DSV.Effect.Bank
 
-z3Path = "/nix/store/r609yd3wybkjyxrc00ism8j2p29xvw6s-z3-4.5.0/bin/z3"
+z3NixPath = "/nix/store/r609yd3wybkjyxrc00ism8j2p29xvw6s-z3-4.5.0/bin/z3"
 
-z3Pipe = createPipe z3Path ["-smt2","-in"]
+z3Pipe = do z3 <- which "z3"
+            let z3Path = case z3 of
+                           Just _ -> "z3"
+                           _ -> z3NixPath
+            createPipe z3Path ["-smt2","-in"]
 
 -- * Verify a proposition by checking for UNSAT of its negation
 verify = verify' z3Pipe
