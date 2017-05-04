@@ -34,25 +34,29 @@ verify' b p = withBackend b (interp <$> p')
         interp _ = False
 
 -- * Check that a program is safe, given a contract and invariant
-program :: (Backend b, Effect e) 
+program :: (Backend b, Effect e, ArgM e b ~ SMT b) 
         => [e] 
         -> Contract e 
         -> Pr b IntType 
         -> SMT b (Expr b BoolType)
 program es c i = and' (map (consafe c i) es)
 
-safe :: (Backend b, Effect e) 
+safe :: (Backend b, Effect e, ArgM e b ~ SMT b)
      => Pr b IntType
      -> e 
      -> SMT b (Expr b BoolType)
-safe i e = triple (i,i) (eff e)
+safe i e = do n <- arg e
+              let i' = \a -> i a .&. (argc e n)
+              triple (i',i') (eff e n)
 
-seqsafe :: (Backend b, Effect e) 
+seqsafe :: (Backend b, Effect e, ArgM e b ~ SMT b) 
         => Pr b IntType
         -> e 
         -> SMT b (Expr b BoolType)
-seqsafe i e = let pre a = i a .&. wp e a
-              in triple (pre,i) (eff e)
+seqsafe i e = do n <- arg e
+                 let i' = \a -> i a .&. (argc e n)
+                     pre = \a -> i' a .&. wp e n a
+                 triple (pre,i) (eff e n)
 
 strong :: (Backend b, Effect e) 
        => Contract e 
@@ -62,14 +66,15 @@ strong c (e0,e1) = if vis c (e0,e1)
                       then true
                       else false
 
-comp :: (Backend b, Effect e) 
+comp :: (Backend b, Effect e, ArgM e b ~ SMT b) 
      => Contract e 
      -> Pr b IntType
      -> (e,e) 
      -> SMT b (Expr b BoolType)
-comp c i (e0,e1) = strong c (e0,e1) .|. safe (wp e1) e0
+comp c i (e0,e1) = do n <- arg e1
+                      strong c (e0,e1) .|. safe (wp e1 n) e0
 
-consafe :: (Backend b, Effect e) 
+consafe :: (Backend b, Effect e, ArgM e b ~ SMT b) 
         => Contract e 
         -> Pr b IntType
         -> e 
