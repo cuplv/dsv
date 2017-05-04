@@ -1,11 +1,10 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE GADTs #-}
 
 module DSV where
 
-import Language.SMTLib2
+import Language.SMTLib2 hiding (Model,store)
 import Language.SMTLib2.Pipe
 import Language.SMTLib2.Debug
 import Turtle.Prelude (which)
@@ -34,29 +33,31 @@ verify' b p = withBackend b (interp <$> p')
         interp _ = False
 
 -- * Check that a program is safe, given a contract and invariant
-program :: (Backend b, Effect e, ArgM e b ~ SMT b) 
+program :: (Backend b, Effect e)
         => [e] 
         -> Contract e 
-        -> Pr b IntType 
+        -> Pr b (Model (Store e) b)
         -> SMT b (Expr b BoolType)
 program es c i = and' (map (consafe c i) es)
 
-safe :: (Backend b, Effect e, ArgM e b ~ SMT b)
-     => Pr b IntType
+safe :: (Backend b, Effect e)
+     => Pr b (Model (Store e) b)
      -> e 
      -> SMT b (Expr b BoolType)
-safe i e = do n <- arg e
-              let i' = \a -> i a .&. (argc e n)
-              triple (i',i') (eff e n)
+safe i e = do n <- param e
+              let i' = \a -> i a .&. (constraint n)
+              a <- store e
+              triple (i',i') (eff e n) a
 
-seqsafe :: (Backend b, Effect e, ArgM e b ~ SMT b) 
-        => Pr b IntType
+seqsafe :: (Backend b, Effect e)
+        => Pr b (Model (Store e) b)
         -> e 
         -> SMT b (Expr b BoolType)
-seqsafe i e = do n <- arg e
-                 let i' = \a -> i a .&. (argc e n)
+seqsafe i e = do n <- param e
+                 let i' = \a -> i a .&. (constraint n)
                      pre = \a -> i' a .&. wp e n a
-                 triple (pre,i) (eff e n)
+                 a <- store e
+                 triple (pre,i) (eff e n) a
 
 strong :: (Backend b, Effect e) 
        => Contract e 
@@ -66,17 +67,18 @@ strong c (e0,e1) = if vis c (e0,e1)
                       then true
                       else false
 
-comp :: (Backend b, Effect e, ArgM e b ~ SMT b) 
+comp :: (Backend b, Effect e)
      => Contract e 
-     -> Pr b IntType
+     -> Pr b (Model (Store e) b)
      -> (e,e) 
      -> SMT b (Expr b BoolType)
-comp c i (e0,e1) = do n <- arg e1
+comp c i (e0,e1) = do n <- param e1
+                      a <- store e1
                       strong c (e0,e1) .|. safe (wp e1 n) e0
 
-consafe :: (Backend b, Effect e, ArgM e b ~ SMT b) 
+consafe :: (Backend b, Effect e)
         => Contract e 
-        -> Pr b IntType
+        -> Pr b (Model (Store e) b)
         -> e 
         -> SMT b (Expr b BoolType)
 consafe c i e = seqsafe i e .&. (and' (map (\e0 -> comp c i (e0,e)) allEffects))

@@ -1,18 +1,18 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE GADTs #-}
 
 module DSV.Logic where
 
 import Language.SMTLib2
 
-type Pr b t = Expr b t -> SMT b (Expr b BoolType)
+newtype Expr' t b = Expr' { unExpr' :: Expr b t}
 
-type Mod b t = Expr b t -> SMT b (Expr b t)
+type Pr b t = t -> SMT b (Expr b BoolType)
+
+type Mod b t = t -> SMT b t
 
 triple :: (Backend b)
-       => (Pr b IntType, Pr b IntType) 
-       -> Mod b IntType
+       => (Pr b t, Pr b t) 
+       -> Mod b t
+       -> t
        -> SMT b (Expr b BoolType)
-triple (p,q) op = declareVar int >>= (\a -> p a .=>. (q =<< op a))
+triple (p,q) op s = p s .=>. (q =<< op s)
