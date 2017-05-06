@@ -14,7 +14,7 @@ library
                      , DSV.Logic
                      , DSV.Contract
                      , DSV.Effect
-                     , DSV.Effect.Bank
+                     , DSV.Examples.Bank
   build-depends:       base >=4.9 && <4.10
                      , smtlib2
                      , smtlib2-debug

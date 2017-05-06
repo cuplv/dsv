@@ -4,7 +4,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeOperators #-}
 
-module DSV.Examples.Banks where
+module DSV.Examples.Bank where
 
 import Language.SMTLib2 hiding (Model,store)
 

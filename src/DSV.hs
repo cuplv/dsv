@@ -12,7 +12,6 @@ import Turtle.Prelude (which)
 import DSV.Logic
 import DSV.Effect
 import DSV.Contract
-import DSV.Effect.Bank
 
 z3NixPath = "/nix/store/r609yd3wybkjyxrc00ism8j2p29xvw6s-z3-4.5.0/bin/z3"
 

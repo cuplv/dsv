@@ -8,7 +8,7 @@ import Language.SMTLib2
 import DSV
 import DSV.Effect
 import DSV.Contract
-import DSV.Effect.Bank
+import DSV.Examples.Bank
 
 main :: IO ()
 main = report tests
