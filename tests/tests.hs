@@ -9,9 +9,20 @@ import DSV
 import DSV.Effect
 import DSV.Contract
 import DSV.Examples.Bank
+import DSV.Examples.ThreeBools
 
 main :: IO ()
-main = report tests
+main = report (tests ++ boolTests)
+
+boolTests :: [IO (Maybe String)]
+boolTests = 
+  [no "safe of S1" (safe na I2S1)
+  ,no "safe of S2" (safe na I3S2)
+  ,no "safe of S3" (safe na I1S3)] ++
+  [ok "seqsafe of S1" (seqsafe na I2S1)
+  ,ok "seqsafe of S2" (seqsafe na I3S2)
+  ,ok "seqsafe of S3" (seqsafe na I1S3)]
+  where na = notAllBools
 
 tests :: [IO (Maybe String)]
 tests = 

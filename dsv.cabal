@@ -15,6 +15,7 @@ library
                      , DSV.Contract
                      , DSV.Effect
                      , DSV.Examples.Bank
+                     , DSV.Examples.ThreeBools
   build-depends:       base >=4.9 && <4.10
                      , smtlib2
                      , smtlib2-debug
