@@ -1,8 +1,5 @@
-{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeFamilyDependencies #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeOperators #-}
 
 module DSV.Examples.ThreeBools where
 
@@ -12,45 +9,32 @@ import DSV.Logic
 import DSV.Effect
 import DSV.Contract
 
-data ThreeBoolsS = ThreeBoolsS
+data B3 b = B3 { b1 :: Expr b BoolType
+               , b2 :: Expr b BoolType
+               , b3 :: Expr b BoolType }
 
-instance DValue ThreeBoolsS where
-  data Model ThreeBoolsS b = ThreeBoolsModel (Expr b BoolType)
-                                             (Expr b BoolType)
-                                             (Expr b BoolType)
-  model _ = ThreeBoolsModel 
-            <$> (declareVar bool)
-            <*> (declareVar bool)
-            <*> (declareVar bool)
+notAllBools :: (Backend b) => Pr b (B3 b)
+notAllBools (B3 b1 b2 b3) = not' (b1 .&. b2 .&. b3)
 
-data ThreeBools = I2S1 | I3S2 | I1S3 deriving (Show,Eq,Ord)
+instance DataModel B3 where
+  model = B3 <$> mkb <*> mkb <*> mkb
+    where mkb = declareVar bool
 
-instance DValue () where
-  data Model () b = UnitModel
-  model _ = return UnitModel
-
-instance Parameter () where
-  constraint = const true
+data ThreeBools = S1 | S2 | S3 deriving (Show,Eq,Ord)
 
 instance Effect ThreeBools where
-  type Store ThreeBools = ThreeBoolsS
-  type Param ThreeBools = ()
-  
-  allEffects = [I2S1,I3S2,I1S3]
-  store _ = model ThreeBoolsS
-  
-  param _ = model ()
-  wp I2S1 = \_ (ThreeBoolsModel b1 b2 b3) -> not' b2
-  wp I3S2 = \_ (ThreeBoolsModel b1 b2 b3) -> not' b3
-  wp I1S3 = \_ (ThreeBoolsModel b1 b2 b3) -> not' b1
-  eff I2S1 = \_ (ThreeBoolsModel b1 b2 b3) -> 
-               ThreeBoolsModel <$> true <*> pure b2 <*> pure b3
-  eff I3S2 = \_ (ThreeBoolsModel b1 b2 b3) -> 
-               ThreeBoolsModel <$> pure b1 <*> true <*> pure b3
-  eff I1S3 = \_ (ThreeBoolsModel b1 b2 b3) -> 
-               ThreeBoolsModel <$> pure b1 <*> pure b2 <*> true
+  type Store ThreeBools = B3
+  type Param ThreeBools = UnitC UnitM
+
+  allEffects = [S1,S2,S3]
+
+  param _ = model
+  wp S1 = \_ -> not' . b2
+  wp S2 = \_ -> not' . b3
+  wp S3 = \_ -> not' . b1
+  eff S1 = \_ (B3 b1 b2 b3) -> B3 <$> true <*> pure b2 <*> pure b3
+  eff S2 = \_ (B3 b1 b2 b3) -> B3 <$> pure b1 <*> true <*> pure b3
+  eff S3 = \_ (B3 b1 b2 b3) -> B3 <$> pure b1 <*> pure b2 <*> true
 
 
 
-notAllBools :: (Backend b) => Pr b (Model (Store ThreeBools) b)
-notAllBools = \(ThreeBoolsModel b1 b2 b3) -> not' (b1 .&. b2 .&. b3)

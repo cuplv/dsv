@@ -35,27 +35,27 @@ verify' b p = withBackend b (interp <$> p')
 program :: (Backend b, Effect e)
         => [e] 
         -> Contract e 
-        -> Pr b (Model (Store e) b)
+        -> Pr b (Store e b)
         -> SMT b (Expr b BoolType)
 program es c i = and' (map (consafe c i) es)
 
 safe :: (Backend b, Effect e)
-     => Pr b (Model (Store e) b)
+     => Pr b (Store e b)
      -> e 
      -> SMT b (Expr b BoolType)
 safe i e = do n <- param e
               let i' = \a -> i a .&. (constraint n)
-              a <- store e
+              a <- model
               triple (i',i') (eff e n) a
 
 seqsafe :: (Backend b, Effect e)
-        => Pr b (Model (Store e) b)
+        => Pr b (Store e b)
         -> e 
         -> SMT b (Expr b BoolType)
 seqsafe i e = do n <- param e
                  let i' = \a -> i a .&. (constraint n)
                      pre = \a -> i' a .&. wp e n a
-                 a <- store e
+                 a <- model
                  triple (pre,i) (eff e n) a
 
 strong :: (Backend b, Effect e) 
@@ -68,16 +68,15 @@ strong c (e0,e1) = if vis c (e0,e1)
 
 comp :: (Backend b, Effect e)
      => Contract e 
-     -> Pr b (Model (Store e) b)
+     -> Pr b (Store e b)
      -> (e,e) 
      -> SMT b (Expr b BoolType)
 comp c i (e0,e1) = do n <- param e1
-                      a <- store e1
                       strong c (e0,e1) .|. safe (wp e1 n) e0
 
 consafe :: (Backend b, Effect e)
         => Contract e 
-        -> Pr b (Model (Store e) b)
+        -> Pr b (Store e b)
         -> e 
         -> SMT b (Expr b BoolType)
 consafe c i e = seqsafe i e .&. (and' (map (\e0 -> comp c i (e0,e)) allEffects))
