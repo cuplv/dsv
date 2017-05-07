@@ -1,4 +1,9 @@
-module DSV.Contract where
+module DSV.Contract
+  ( Contract (..)
+  , vis
+  , emptyC
+  , strongC
+  ) where
 
 data Contract e = Vis ((e,e) -> Bool)
 

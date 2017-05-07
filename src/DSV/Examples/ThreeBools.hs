@@ -3,11 +3,8 @@
 
 module DSV.Examples.ThreeBools where
 
-import Language.SMTLib2 hiding (Model,store)
-
-import DSV.Logic
-import DSV.Effect
-import DSV.Contract
+import Language.SMTLib2
+import DSV.Prelude
 
 data B3 b = B3 { b1 :: Expr b BoolType
                , b2 :: Expr b BoolType

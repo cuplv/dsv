@@ -1,6 +1,10 @@
 {-# LANGUAGE DataKinds #-}
 
-module DSV.Logic where
+module DSV.Logic 
+  ( Expr' (..)
+  , Pr, Mod
+  , triple
+  ) where
 
 import Language.SMTLib2
 

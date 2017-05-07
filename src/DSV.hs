@@ -2,9 +2,21 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DataKinds #-}
 
-module DSV where
+module DSV 
+  ( verify
+  , debug
+  , program
+  , safe
+  , seqsafe
+  , strong
+  , comp
+  , consafe
+  , module DSV.Logic
+  , module DSV.Contract
+  , module DSV.Effect
+  ) where
 
-import Language.SMTLib2 hiding (Model,store)
+import Language.SMTLib2
 import Language.SMTLib2.Pipe
 import Language.SMTLib2.Debug
 import Turtle.Prelude (which)

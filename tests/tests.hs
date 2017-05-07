@@ -4,10 +4,7 @@ import System.Exit
 import Data.Maybe
 
 import Language.SMTLib2
-
-import DSV
-import DSV.Effect
-import DSV.Contract
+import DSV.Prelude
 import DSV.Examples.Bank
 import DSV.Examples.ThreeBools
 

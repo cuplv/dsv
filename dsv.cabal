@@ -11,11 +11,12 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     DSV
-                     , DSV.Logic
-                     , DSV.Contract
-                     , DSV.Effect
+                     , DSV.Prelude
                      , DSV.Examples.Bank
                      , DSV.Examples.ThreeBools
+  other-modules:       DSV.Logic
+                     , DSV.Contract
+                     , DSV.Effect
   build-depends:       base >=4.9 && <4.10
                      , smtlib2
                      , smtlib2-debug

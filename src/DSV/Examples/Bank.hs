@@ -4,11 +4,8 @@
 
 module DSV.Examples.Bank where
 
-import Language.SMTLib2 hiding (Model,store)
-
-import DSV.Logic
-import DSV.Effect
-import DSV.Contract
+import Language.SMTLib2
+import DSV.Prelude
 
 data Bank = Wd | Dp deriving (Show,Eq,Ord)
 
