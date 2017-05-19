@@ -3,16 +3,21 @@
 {-# LANGUAGE DataKinds #-}
 
 module DSV 
-  ( verify
+  ( -- * Sequential logic
+    module DSV.Logic
+  -- * Verification
+  , verify
   , verifyShow
+  -- * Propositions
   , program
   , safe
   , seqsafe
   , strong
   , comp
   , consafe
-  , module DSV.Logic
+  -- * Contracts
   , module DSV.Contract
+  -- * Distributed stores
   , module DSV.Effect
   ) where
 

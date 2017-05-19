@@ -1,8 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 
 module DSV.Logic 
-  ( Expr' (..)
-  , Pr, Mod
+  ( Pr, Mod
   , triple
   ) where
 
