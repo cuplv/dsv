@@ -78,9 +78,12 @@ safe :: (Backend b, Effect e)
      -> e -- ^ The effect
      -> SMT b (Expr b BoolType)
 safe i e = do n <- param e
-              let i' = \a -> i a .&. (constraint n)
+
+              -- "c" being the constraint on the parameter n
+              let i_and_c = \a -> i a .&. (constraint n)
+
               a <- model
-              triple (i',i') (eff e n) a
+              triple (i_and_c,i) (eff e n) a
 
 -- | Check that an effect always maintains an invariant on stores that
 --   satisfy its weakest precondition
