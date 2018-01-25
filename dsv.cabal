@@ -17,7 +17,7 @@ library
   other-modules:       DSV.Logic
                      , DSV.Contract
                      , DSV.Effect
-  build-depends:       base >=4.9 && <4.10
+  build-depends:       base >=4.10 && <4.11
                      , smtlib2
                      , smtlib2-debug
                      , smtlib2-pipe
