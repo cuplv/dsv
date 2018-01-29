@@ -1,0 +1,45 @@
+{-# LANGUAGE DataKinds #-}
+
+module DSV.CARD where
+
+import Language.SMTLib2
+import DSV.Logic
+import DSV.Effect
+
+-- | A "consistency requirement" on store type 't' (also called a
+--   "consistency guard", "consistency predicate", or "consistency
+--   refinement"
+type ConReq b t = Pr b (t,t)
+
+-- | Transformer on store, first bound with a snap
+type Oper b t = t -> t -> SMT b t
+
+presVis :: (Backend b)
+        => (ConReq b t, ConReq b t) -- ^ Pre- and post- consistency
+                                    --   conditions
+        -> Oper b t
+        -> (t,t,t) -- ^ (Snap, Global, Local) three-part state model
+        -> SMT b (Expr b BoolType)
+presVis (k1,k2) c = triple (k1',k2') c'
+  where c' (sn,gl,lc) = do gl' <- c sn gl
+                           lc' <- c sn lc
+                           return (sn,gl',lc')
+        k1' (sn,gl,lc) = k1 (lc,gl) .&. k2 (sn,gl)
+        k2' (sn,gl,lc) = k2 (lc,gl)
+
+presAny :: (Backend b)
+        => (ConReq b t, ConReq b t)
+        -> Oper b t
+        -> (t,t)
+        -> SMT b (Expr b BoolType)
+presAny ks c = triple ks (\(sg,sr) -> (,) <$> c sr sg <*> pure sr)
+
+useCon :: (Backend b)
+       => (Pr b t, Pr b t)
+       -> ConReq b t
+       -> Oper b t
+       -> (t,t) -- ^ (snap,store)
+       -> SMT b (Expr b BoolType)
+useCon (p,q) k c (snap,store) = 
+  let p' = \t -> p t .&. k (snap,t)
+  in triple (p',q) (c snap) store

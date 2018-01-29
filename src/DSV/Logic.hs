@@ -11,8 +11,9 @@ import Language.SMTLib2
 --   unapplied
 newtype Expr' t b = Expr' { unExpr' :: Expr b t}
 
--- | Logical predicate containing one free variable 't' (modeled as a
---   function from 't' to an SMT expression of type 'BoolType')
+-- | Logical predicate containing one free variable of type 't'
+--   (modeled as a function from 't' to an SMT expression of type
+--   'BoolType')
 type Pr b t = t -> SMT b (Expr b BoolType)
 
 -- | Transformer on an SMT expression of type 't'
@@ -27,6 +28,6 @@ type Mod b t = t -> SMT b t
 triple :: (Backend b)
        => (Pr b t, Pr b t) -- ^ Pre- and post-condition (P and Q)
        -> Mod b t -- ^ Transformer command (C)
-       -> t -- ^ State type
+       -> t -- ^ State model
        -> SMT b (Expr b BoolType)
 triple (p,q) op s = p s .=>. (q =<< op s)

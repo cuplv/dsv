@@ -14,6 +14,7 @@ library
                      , DSV.Prelude
                      , DSV.Examples.Bank
                      , DSV.Examples.ThreeBools
+                     , DSV.CARD
   other-modules:       DSV.Logic
                      , DSV.Contract
                      , DSV.Effect
