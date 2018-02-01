@@ -12,12 +12,9 @@ cabal-version:       >=1.10
 library
   exposed-modules:     DSV
                      , DSV.Prelude
-                     , DSV.Examples.Bank
-                     , DSV.Examples.ThreeBools
-                     , DSV.CARD
-  other-modules:       DSV.Logic
-                     , DSV.Contract
-                     , DSV.Effect
+  other-modules:       DSV.Model
+                     , DSV.Logic
+                     , DSV.Program
   build-depends:       base >=4.10 && <4.11
                      , smtlib2
                      , smtlib2-debug
@@ -25,18 +22,7 @@ library
                      , text >= 1.2.2.1
                      , turtle
                      , TypeCompose
+                     , containers
 
   hs-source-dirs:      src
   default-language:    Haskell2010
-  -- extra-libraries:     z3
-
-test-suite tests
-  type:                exitcode-stdio-1.0
-  main-is:             tests.hs
-  hs-source-dirs:      tests
-  default-language:    Haskell2010
-  build-depends:       base
-                     , dsv
-                     , smtlib2
-                     , smtlib2-pipe
-                     , text >= 1.2.2.1
