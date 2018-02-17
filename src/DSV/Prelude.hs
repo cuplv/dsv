@@ -65,6 +65,10 @@ conLE ((IntM snap),(IntM store)) = snap .<=. store
 conGE :: (Backend b) => ConReq b (IntM b)
 conGE ((IntM snap),(IntM store)) = snap .>=. store
 
+onJBA :: (Backend b) => ConReq b (IntM b) -> ConReq b (JBA b)
+onJBA con (snap,store) = let (snapA,_,_) = deconJBA snap
+                             (storeA,_,_) = deconJBA store
+                         in con (snapA,storeA)
 
 -- BANK ACCOUNTS
 
@@ -148,8 +152,76 @@ data KVBank = KVBank Bank deriving (Show,Eq,Ord)
 -- instance Program KVBank where
 --   type Store KVBank = undefined
 
-data JointBank = R1 | R2 | A1 | A2 | Dp | Wd deriving (Show,Eq,Ord)
+-- | A bank account requiring requests and approvals for withdrawals
+data JointBank = R1 -- ^ Request withdrawal for owner #1
+               | R2 -- ^ Request withdrawal for owner #2
+               | A1 -- ^ Approve withdrawal for owner #1
+               | A2 -- ^ Approve withdrawal for owner #2
+               | Dp -- ^ Deposit (owner \#1 or \#2)
+               | Wd1 -- ^ Withdraw (by owner #1)
+               | Wd2 -- ^ Withdraw (by owner #2)
+               deriving (Show,Eq,Ord)
+
+type JBA = Prod IntM (Prod (Prod BoolM BoolM) (Prod BoolM BoolM))
+
+deconJBA :: JBA b -> (IntM b,(BoolM b,BoolM b),(BoolM b,BoolM b))
+deconJBA (Prod (a, Prod (Prod rs, Prod as))) = (a,rs,as)
+
+mkJBA :: (IntM b,(BoolM b,BoolM b),(BoolM b,BoolM b)) -> JBA b
+mkJBA (a,rs,as) = Prod (a, Prod (Prod rs, Prod as))
+
+conReadiness :: (Backend b) => JointBank -> ConReq b (JBA b)
+conReadiness o (snap,store) = 
+  let (_,_,(BoolM appA1,BoolM appA2)) = deconJBA snap
+      (_,_,(BoolM appB1,BoolM appB2)) = deconJBA store
+  in case o of
+       Wd1 -> appA1 .==. appB1
+       Wd2 -> appA2 .==. appB2
 
 instance Program JointBank where
-  type Store JointBank = Prod IntM (Prod BoolM BoolM)
+  type Store JointBank = JBA
   type Env JointBank = IntM
+  allOps = [R1,R2,A1,A2,Dp,Wd1,Wd2]
+  envConstraint _ = positive
+
+  -- For now we're not worrying about invariants
+  opCon _ = conTop
+  
+  opDef R1 _ _ s = 
+    let (a,(_,r2),(a1,a2)) = deconJBA s 
+    in do r1 <- BoolM <$> true
+          return $ mkJBA (a,(r1,r2),(a1,a2))
+  opDef R2 _ _ s = 
+    let (a,(r1,_),(a1,a2)) = deconJBA s 
+    in do r2 <- BoolM <$> true
+          return $ mkJBA (a,(r1,r2),(a1,a2))
+  opDef A1 _ _ s = 
+    let (a,(BoolM req,r2),(_,a2)) = deconJBA s 
+    in do a1 <- BoolM <$> pure req
+          r1 <- BoolM <$> not' req
+          return $ mkJBA (a,(r1,r2),(a1,a2))
+  opDef A2 _ _ s = 
+    let (a,(r1,BoolM req),(a1,_)) = deconJBA s 
+    in do a2 <- BoolM <$> pure req
+          r2 <- BoolM <$> not' req
+          return $ mkJBA (a,(r1,r2),(a1,a2))
+  opDef Dp (IntM n) _ s = 
+    let (IntM a,rs,as) = deconJBA s
+    in do a' <- IntM <$> a .+. n
+          return $ mkJBA (a',rs,as)
+  opDef Wd1 (IntM n) snapS storeS = 
+    let (IntM store,(r1,r2),(_,a2)) = deconJBA storeS
+        (IntM snap ,_,(BoolM app,_)) = deconJBA snapS
+    in do cond <- (snap .>=. n) .&. app
+          store' <- IntM <$> ite cond (store .-. n) store
+          -- r1 <- BoolM <$> ite cond false req
+          a1 <- BoolM <$> ite cond false app
+          return $ mkJBA (store',(r1,r2),(a1,a2))
+  opDef Wd2 (IntM n) snapS storeS = 
+    let (IntM store,(r1,r2),(a1,_)) = deconJBA storeS
+        (IntM snap ,_,(_,BoolM app)) = deconJBA snapS
+    in do cond <- (snap .>=. n) .&. app
+          store' <- IntM <$> ite cond (store .-. n) store
+          -- r2 <- BoolM <$> ite cond false req
+          a2 <- BoolM <$> ite cond false app
+          return $ mkJBA (store',(r1,r2),(a1,a2))

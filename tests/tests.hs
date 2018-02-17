@@ -30,7 +30,13 @@ tests =
   -- Conspiring booleans
   ,confl [E1] cfst "First"
   ,confl [E1,E2] csnd "Second"
-  ,confl [E1,E2] conEq "Eq" ]
+  ,confl [E1,E2] conEq "Eq"
+  
+  -- Joint bank account
+  ,confl [Wd1,Wd2] (onJBA conLE) "LE - JBA"
+  ,confl [Dp] (onJBA conGE) "GE - JBA"
+  ,confl [R1,A1,Wd1] (conReadiness Wd1) "Ready 1?"
+  ,confl [R2,A2,Wd2] (conReadiness Wd2) "Ready 2?" ]
 
 -- | A test of the conflict avoidance set for a guard
 confl :: (Program o, Eq o)
