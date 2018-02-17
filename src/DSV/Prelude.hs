@@ -123,11 +123,11 @@ instance Program ConspireBools where
   allOps = [E1,E2,E3]
   envConstraint _ = top
 
-  opCon E3 = csnd
   opCon _ = conTop
 
-  opDef E1 _ _ (B3 _ e f) = B3 <$> true <*> pure e <*> pure f
+  opDef E1 _ _          (B3 _ e f) = 
+    B3 <$> true <*> pure e <*> pure f
   opDef E2 _ (B3 a _ _) (B3 d e f) = 
     B3 <$> pure d <*> ite a e false <*> pure f
-  opDef E3 _ (B3 a b c) (B3 d e f) = 
-    B3 <$> pure d <*> pure e <*> ite b false f
+  opDef E3 _ _          bs         = 
+    pure bs

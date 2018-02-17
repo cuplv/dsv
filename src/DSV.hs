@@ -5,7 +5,7 @@
 module DSV 
   ( verify
   , verifyShow
-  , module DSV.Model
+  , askSMT
   , module DSV.Logic
   , module DSV.Program
   ) where
@@ -16,7 +16,6 @@ import Language.SMTLib2.Pipe
 import Language.SMTLib2.Debug
 import Turtle.Prelude (which)
 
-import DSV.Model
 import DSV.Logic
 import DSV.Program
 
@@ -33,6 +32,9 @@ z3Pipe = do z3 <- which "z3"
 verify :: SMT SMTPipe (Expr SMTPipe BoolType) -> IO Bool
 verify = verify' z3Pipe
 
+askSMT :: SMT SMTPipe a -> IO a
+askSMT p = withBackend z3Pipe p
+
 -- | Print out interactions with the SMT solver (in the form of
 --   SMTLIB2 expressions) while verifying a proposition
 verifyShow 
@@ -46,7 +48,3 @@ verify' b p = withBackend b (interp <$> p')
         interp Unsat = True
         interp _ = False
 
-impl :: (Backend b, DataModel t) => ConReq b (t b) -> ConReq b (t b) -> SMT b (Expr b BoolType)
-impl k k' = do snap <- model
-               store <- model
-               k (snap,store) .=>. k' (snap,store)
