@@ -4,6 +4,7 @@ import System.Exit
 import Data.Maybe
 import Language.SMTLib2
 import Language.SMTLib2.Pipe
+import Data.List (sort)
 
 import DSV
 import DSV.Prelude
@@ -19,11 +20,12 @@ tests =
   ,confl [Deposit] conGE "GE"
   ,confl [Withdraw,Deposit] conEq "EQ"
 
+  -- Conspiring booleans
   ,confl [E1] cfst "First"
   ,confl [E1,E2] csnd "Second" ]
 
 -- | A test of the conflict avoidance set for a guard
-confl :: (Program o, Eq o) 
+confl :: (Program o, Eq o)
       => [o] -- ^ Expected conflicting operations
       -> ConReq SMTPipe (Store o SMTPipe) -- ^ Guard to test
       -> String -- ^ Helpful name for this test

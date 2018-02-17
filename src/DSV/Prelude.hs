@@ -127,7 +127,7 @@ instance Program ConspireBools where
 
   opDef E1 _ _          (B3 _ e f) = 
     B3 <$> true <*> pure e <*> pure f
-  opDef E2 _ (B3 a _ _) (B3 d e f) = 
-    B3 <$> pure d <*> ite a e false <*> pure f
+  opDef E2 _ _          (B3 d e f) = 
+    B3 <$> pure d <*> ite d e false <*> pure f
   opDef E3 _ _          bs         = 
     pure bs

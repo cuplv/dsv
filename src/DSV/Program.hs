@@ -10,6 +10,8 @@ module DSV.Program
   , conflictAvd
   , verifyOp
   , verifyProgram
+  , mkOp
+  , mkEffect
   ) where
 
 import Data.Map (Map)

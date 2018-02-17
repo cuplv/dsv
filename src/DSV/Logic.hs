@@ -143,6 +143,6 @@ checkCon (p,q) k ep c (env,snap,store) =
   in triple (p',q) (c env snap) store
 
 wcp :: (Backend b) => (t -> SMT b t) -> ConReq b t -> ConReq b t
-wcp c k = \(snap,store) -> do snap' <- c snap
-                              store' <- c store
-                              k (snap',store')
+wcp e g = \(snap,store) -> do snap' <- e snap
+                              store' <- e store
+                              g (snap',store')
