@@ -1,9 +1,11 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeFamilies #-}
+-- {-# LANGUAGE TemplateHaskell #-}
 
 module DSV.Prelude where
 
 import Language.SMTLib2
+-- import Language.Haskell.TH
 
 import DSV
 
@@ -29,6 +31,13 @@ data IntM b = IntM (Expr b IntType)
 instance DataModel IntM where
   model = IntM <$> declareVar int
   modEq (IntM i1) (IntM i2) = i1 .==. i2
+
+-- | An array of integers
+data ArrayIntM b = ArrayIntM (Expr b (ArrayType '[IntType] IntType))
+
+instance DataModel ArrayIntM where
+  model = ArrayIntM <$> declareVar (array (int ::: Nil) int)
+  modEq (ArrayIntM a) (ArrayIntM b) = a .==. b
 
 top :: (Backend b) => Pr b (t b)
 top _ = true
@@ -131,3 +140,16 @@ instance Program ConspireBools where
     B3 <$> pure d <*> ite d e false <*> pure f
   opDef E3 _ _          bs         = 
     pure bs
+
+data ABC = A | B | C deriving (Show,Eq,Ord)
+
+data KVBank = KVBank Bank deriving (Show,Eq,Ord)
+
+-- instance Program KVBank where
+--   type Store KVBank = undefined
+
+data JointBank = R1 | R2 | A1 | A2 | Dp | Wd deriving (Show,Eq,Ord)
+
+instance Program JointBank where
+  type Store JointBank = Prod IntM (Prod BoolM BoolM)
+  type Env JointBank = IntM

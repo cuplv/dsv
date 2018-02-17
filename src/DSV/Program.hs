@@ -18,10 +18,12 @@ import Data.Map (Map)
 import qualified Data.Map as M
 import Language.SMTLib2
 import Control.Monad
+import qualified Data.Set as S
+import Data.Set (Set)
 
 import DSV.Logic
 
-class (DataModel (Store o), DataModel (Env o)) => Program o where
+class (Eq o, Ord o, DataModel (Store o), DataModel (Env o)) => Program o where
   type Store o :: * -> *
   type Env o :: * -> *
   allOps :: [o]
@@ -64,14 +66,14 @@ verifyProgram os i = mapM (verifyOp (i,i)) os >>= and'
 onTwo g = \(Prod (a,b)) -> g (a,b)
 
 -- | Conflict avoidance set for a guard
-conflictAvd :: (Backend b, Program o) => [o] -> ConReq b (Store o b) -> SMT b [o]
+conflictAvd :: (Backend b, Program o) => [o] -> ConReq b (Store o b) -> SMT b (Set o)
 conflictAvd ofs g = 
   do os <- mapM mkEffect ofs
      let gps = [g] ++ map (\o -> wcp o g) os
      let g' = (\store -> and' $ map ($ store) gps)
      result <- onTwo g |= onTwo g'
      if result
-        then filterM (\o -> not <$> checkAcc o g) ofs
+        then S.fromList <$> filterM (\o -> not <$> checkAcc o g) ofs
         else conflictAvd ofs g'
   where checkAcc o g = do e <- mkEffect o
                           result <- accord o e g

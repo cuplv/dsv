@@ -5,6 +5,8 @@ import Data.Maybe
 import Language.SMTLib2
 import Language.SMTLib2.Pipe
 import Data.List (sort)
+import qualified Data.Set as S
+import Data.Set (Set)
 
 import DSV
 import DSV.Prelude
@@ -20,9 +22,15 @@ tests =
   ,confl [Deposit] conGE "GE"
   ,confl [Withdraw,Deposit] conEq "EQ"
 
+  ,confl [BankR Withdraw,Reset] conLE "LE - R"
+  ,confl [BankR Deposit,Reset] conGE "GE - R"
+  ,confl [BankR Withdraw,BankR Deposit,Reset] conEq "EQ - R"
+  ,confl ([] :: [BankR]) conTop "Top - R"
+
   -- Conspiring booleans
   ,confl [E1] cfst "First"
-  ,confl [E1,E2] csnd "Second" ]
+  ,confl [E1,E2] csnd "Second"
+  ,confl [E1,E2] conEq "Eq" ]
 
 -- | A test of the conflict avoidance set for a guard
 confl :: (Program o, Eq o)
@@ -30,7 +38,7 @@ confl :: (Program o, Eq o)
       -> ConReq SMTPipe (Store o SMTPipe) -- ^ Guard to test
       -> String -- ^ Helpful name for this test
       -> IO (Maybe String)
-confl os g = ver (conflictAvd allOps g) os
+confl os g = ver (conflictAvd allOps g) (S.fromList os)
 
 -- | A test running an experiment on an SMT solver.
 ver :: (Eq a)
