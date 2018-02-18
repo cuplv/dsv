@@ -14,7 +14,10 @@ import DSV.Prelude
 
 
 tests :: [IO (Maybe String)]
-tests = concat [sanity,bank,bankR,conspireBools,jointBank,kvBank,stateMachine]
+tests = allTests
+
+
+allTests = concat [sanity,bank,bankR,conspireBools,jointBank,kvBank,stateMachine]
 
 sanity =
   [ver (pure true |= \(IntM a) -> a .==. cint 2) False "Sanity 1"
@@ -23,21 +26,29 @@ sanity =
 bank = 
   [confl [Withdraw] conLE "LE"
   ,confl [Deposit] conGE "GE"
-  ,confl [Withdraw,Deposit] conEq "EQ"]
+
+  ,confl [Withdraw,Deposit] conEq "EQ"
+  ,confl ([] :: [Bank]) conTop "Top - Bank"]
 bankR = 
   [confl [BankR Withdraw,Reset] conLE "LE - R"
   ,confl [BankR Deposit,Reset] conGE "GE - R"
-  ,confl [BankR Withdraw,BankR Deposit,Reset] conEq "EQ - R"
-  ,confl ([] :: [BankR]) conTop "Top - R"]
+
+  ,confl [BankR Withdraw,BankR Deposit,Reset] conEq "EQ - BankR"
+  ,confl ([] :: [BankR]) conTop "Top - BankR"]
 conspireBools = 
   [confl [E1] cfst "First"
   ,confl [E1,E2] csnd "Second"
-  ,confl [E1,E2] conEq "Eq"]
+
+  ,confl [E1,E2] conEq "Eq"
+  ,confl ([] :: [ConspireBools]) conTop "Top - Conspire"]
 jointBank = 
   [confl [Wd1,Wd2] (onJBA conLE) "LE - JBA"
   ,confl [Dp] (onJBA conGE) "GE - JBA"
   ,confl [R1,A1,Wd1] (conReadiness Wd1) "Ready 1?"
-  ,confl [R2,A2,Wd2] (conReadiness Wd2) "Ready 2?"]
+  ,confl [R2,A2,Wd2] (conReadiness Wd2) "Ready 2?"
+
+  ,confl [R1,R2,A1,A2,Wd1,Wd2,Dp] conEq "EQ - JointBank"
+  ,confl ([] :: [JointBank]) conTop "Top - JointBank"]
 kvBank = 
   [confl [KVBank Withdraw] (onArray conLE) "LE - KV"
   ,confl [KVBank Deposit] (onArray conGE) "GE - KV"
@@ -45,9 +56,15 @@ kvBank =
   ,confl [KVBank Withdraw, KVBank Deposit] conEq "EQ - KV all"
   ,confl [KVBank Withdraw] conAllLE "LE - KV all 10"
   ,confl [KVBank Deposit] conAllGE "GE - KV all 10"
-  ,confl [KVBank Withdraw, KVBank Deposit] conAllEq "Eq - KV all 10"]
+  ,confl [KVBank Withdraw, KVBank Deposit] conAllEq "Eq - KV all 10"
+
+  ,confl [KVBank Withdraw, KVBank Deposit] conEq "Eq - KV total"
+  ,confl ([] :: [KVBank]) conTop "Top - KVBank"]
 stateMachine = 
-  [confl ([A,B]::[ABC]) con1 "1"]
+  [confl ([A,B]::[ABC]) con1 "1"
+
+  ,confl [A,B] conEq "Eq - ABC"
+  ,confl ([] :: [ABC]) conTop "Top - ABC"]
 
 -- | A test of the conflict avoidance set for a guard
 confl :: (Program o, Eq o)
