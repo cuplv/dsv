@@ -55,6 +55,18 @@ conAllLE (ArrayIntM sn, ArrayIntM st) =
   where sumUp arr is = 
           mapM (\i -> select1 arr (cint i)) is >>= plus
 
+conAllGE :: (Backend b) => ConReq b (ArrayIntM b)
+conAllGE (ArrayIntM sn, ArrayIntM st) =
+  sumUp sn [0..10] .>=. sumUp st [0..10]
+  where sumUp arr is = 
+          mapM (\i -> select1 arr (cint i)) is >>= plus
+
+conAllEq :: (Backend b) => ConReq b (ArrayIntM b)
+conAllEq (ArrayIntM sn, ArrayIntM st) =
+  sumUp sn [0..10] .==. sumUp st [0..10]
+  where sumUp arr is = 
+          mapM (\i -> select1 arr (cint i)) is >>= plus
+
 top :: (Backend b) => Pr b (t b)
 top _ = true
 
@@ -162,6 +174,26 @@ instance Program ConspireBools where
     pure bs
 
 data ABC = A | B | C deriving (Show,Eq,Ord)
+
+instance Program ABC where
+  type Store ABC = IntM
+  type Env ABC = UnitM
+  
+  allOps = [A,B,C]
+  envConstraint _ = top
+  
+  opCon _ = conTop
+  
+  opDef A _ _ (IntM s) = 
+    IntM <$> ite (s .==. cint 0 .|. s .==. cint 1) (s .+. cint 1) (s)
+  opDef B _ _ (IntM s) = 
+    IntM <$> ite (s .==. cint 2) (cint 0) (s)
+  opDef C _ _ s = pure s
+
+-- | Snap and store agree on whether the state is 1
+con1 :: (Backend b) => ConReq b (Store ABC b)
+con1 (IntM snap,IntM store) = (snap .==. cint 1) .==. (store .==. cint 1)
+     
 
 data KVBank = KVBank Bank deriving (Show,Eq,Ord)
 

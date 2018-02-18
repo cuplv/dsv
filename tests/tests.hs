@@ -40,12 +40,16 @@ tests =
   ,confl [R2,A2,Wd2] (conReadiness Wd2) "Ready 2?"
   
   -- KV bank account
-  -- ,ver (do e <- mkEffect (KVBank Withdraw); accord (KVBank Withdraw) e (onArray conLE)) True "Hmm"
   ,confl [KVBank Withdraw] (onArray conLE) "LE - KV"
   ,confl [KVBank Deposit] (onArray conGE) "GE - KV"
   ,confl [KVBank Withdraw, KVBank Deposit] (onArray conEq) "EQ - KV"
   ,confl [KVBank Withdraw, KVBank Deposit] conEq "EQ - KV all"
-  ,confl [KVBank Withdraw] conAllLE "LE - KV all 10"]
+  ,confl [KVBank Withdraw] conAllLE "LE - KV all 10"
+  ,confl [KVBank Deposit] conAllGE "GE - KV all 10"
+  ,confl [KVBank Withdraw, KVBank Deposit] conAllEq "Eq - KV all 10"
+  
+  -- State machine
+  ,confl ([A,B]::[ABC]) con1 "1"]
 
 -- | A test of the conflict avoidance set for a guard
 confl :: (Program o, Eq o)
