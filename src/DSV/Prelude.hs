@@ -100,13 +100,13 @@ onJBA con (snap,store) = let (snapA,_,_) = deconJBA snap
 
 -- BANK ACCOUNTS
 
-data Bank = Withdraw | Deposit deriving (Show,Eq,Ord)
+data Bank = Withdraw | Deposit | BankNoOp deriving (Show,Eq,Ord)
 
 instance Program Bank where
   type Store Bank = IntM
   type Env Bank = IntM
   
-  allOps = [Withdraw,Deposit]
+  allOps = [Withdraw,Deposit,BankNoOp]
   envConstraint _ = positive
 
   opCon Withdraw = conLE
@@ -116,6 +116,7 @@ instance Program Bank where
     IntM <$> ite (snap .>=. n) (store .-. n) (store)
   opDef Deposit (IntM n) _ (IntM store) = 
     IntM <$> store .+. n
+  opDef BankNoOp _ _ s = pure s
 
 data BankR = BankR Bank | Reset deriving (Show,Eq,Ord)
 
@@ -223,6 +224,7 @@ data JointBank = R1 -- ^ Request withdrawal for owner #1
                | Dp -- ^ Deposit (owner \#1 or \#2)
                | Wd1 -- ^ Withdraw (by owner #1)
                | Wd2 -- ^ Withdraw (by owner #2)
+               | JointBankNoOp
                deriving (Show,Eq,Ord)
 
 type JBA = Prod IntM (Prod (Prod BoolM BoolM) (Prod BoolM BoolM))
@@ -244,7 +246,7 @@ conReadiness o (snap,store) =
 instance Program JointBank where
   type Store JointBank = JBA
   type Env JointBank = IntM
-  allOps = [R1,R2,A1,A2,Dp,Wd1,Wd2]
+  allOps = [R1,R2,A1,A2,Dp,Wd1,Wd2,JointBankNoOp]
   envConstraint _ = positive
 
   -- For now we're not worrying about invariants
@@ -288,3 +290,4 @@ instance Program JointBank where
           -- r2 <- BoolM <$> ite cond false req
           a2 <- BoolM <$> ite cond false app
           return $ mkJBA (store',(r1,r2),(a1,a2))
+  opDef JointBankNoOp _ _ s = pure s
