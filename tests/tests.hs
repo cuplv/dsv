@@ -14,54 +14,52 @@ import DSV.Prelude
 
 
 tests :: [IO (Maybe String)]
-tests = 
+tests = concat [sanity,bank,bankR,conspireBools,jointBank,kvBank,stateMachine]
+
+sanity =
   [ver (pure true |= \(IntM a) -> a .==. cint 2) False "Sanity 1"
-  ,ver ((\(IntM a) -> a .==. cint 2) |= (\(IntM a) -> a .==. cint 2)) True "Sanity 2"
+  ,ver ((\(IntM a) -> a .==. cint 2) |= (\(IntM a) -> a .==. cint 2)) True "Sanity 2"]
 
-  -- Bank account
-  ,confl [Withdraw] conLE "LE"
+bank = 
+  [confl [Withdraw] conLE "LE"
   ,confl [Deposit] conGE "GE"
-  ,confl [Withdraw,Deposit] conEq "EQ"
-
-  ,confl [BankR Withdraw,Reset] conLE "LE - R"
+  ,confl [Withdraw,Deposit] conEq "EQ"]
+bankR = 
+  [confl [BankR Withdraw,Reset] conLE "LE - R"
   ,confl [BankR Deposit,Reset] conGE "GE - R"
   ,confl [BankR Withdraw,BankR Deposit,Reset] conEq "EQ - R"
-  ,confl ([] :: [BankR]) conTop "Top - R"
-
-  -- Conspiring booleans
-  ,confl [E1] cfst "First"
+  ,confl ([] :: [BankR]) conTop "Top - R"]
+conspireBools = 
+  [confl [E1] cfst "First"
   ,confl [E1,E2] csnd "Second"
-  ,confl [E1,E2] conEq "Eq"
-  
-  -- Joint bank account
-  ,confl [Wd1,Wd2] (onJBA conLE) "LE - JBA"
+  ,confl [E1,E2] conEq "Eq"]
+jointBank = 
+  [confl [Wd1,Wd2] (onJBA conLE) "LE - JBA"
   ,confl [Dp] (onJBA conGE) "GE - JBA"
   ,confl [R1,A1,Wd1] (conReadiness Wd1) "Ready 1?"
-  ,confl [R2,A2,Wd2] (conReadiness Wd2) "Ready 2?"
-  
-  -- KV bank account
-  ,confl [KVBank Withdraw] (onArray conLE) "LE - KV"
+  ,confl [R2,A2,Wd2] (conReadiness Wd2) "Ready 2?"]
+kvBank = 
+  [confl [KVBank Withdraw] (onArray conLE) "LE - KV"
   ,confl [KVBank Deposit] (onArray conGE) "GE - KV"
   ,confl [KVBank Withdraw, KVBank Deposit] (onArray conEq) "EQ - KV"
   ,confl [KVBank Withdraw, KVBank Deposit] conEq "EQ - KV all"
   ,confl [KVBank Withdraw] conAllLE "LE - KV all 10"
   ,confl [KVBank Deposit] conAllGE "GE - KV all 10"
-  ,confl [KVBank Withdraw, KVBank Deposit] conAllEq "Eq - KV all 10"
-  
-  -- State machine
-  ,confl ([A,B]::[ABC]) con1 "1"]
+  ,confl [KVBank Withdraw, KVBank Deposit] conAllEq "Eq - KV all 10"]
+stateMachine = 
+  [confl ([A,B]::[ABC]) con1 "1"]
 
 -- | A test of the conflict avoidance set for a guard
 confl :: (Program o, Eq o)
       => [o] -- ^ Expected conflicting operations
-      -> ConReq (DebugBackend SMTPipe) (Store o (DebugBackend SMTPipe)) -- ^ Guard to test
+      -> ConReq SMTPipe (Store o SMTPipe) -- ^ Guard to test
       -> String -- ^ Helpful name for this test
       -> IO (Maybe String)
 confl os g = ver (conflictAvd allOps g) (S.fromList os)
 
 -- | A test running an experiment on an SMT solver.
 ver :: (Eq a)
-   => SMT (DebugBackend SMTPipe) a -- ^ Question for SMT solver
+   => SMT SMTPipe a -- ^ Question for SMT solver
    -> a -- ^ Answer it should give
    -> String -- ^ Helpful name for this test
    -> IO (Maybe String)

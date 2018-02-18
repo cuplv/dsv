@@ -32,8 +32,8 @@ z3Pipe = do z3 <- which "z3"
 verify :: SMT SMTPipe (Expr SMTPipe BoolType) -> IO Bool
 verify = verify' z3Pipe
 
-askSMT :: SMT (DebugBackend SMTPipe) a -> IO a
-askSMT p = withBackend (debugBackend <$> z3Pipe) p
+askSMT :: SMT SMTPipe a -> IO a
+askSMT p = withBackend z3Pipe p
 
 -- | Print out interactions with the SMT solver (in the form of
 --   SMTLIB2 expressions) while verifying a proposition
