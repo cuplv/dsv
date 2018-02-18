@@ -36,5 +36,6 @@ test-suite tests
                      , dsv
                      , smtlib2
                      , smtlib2-pipe
+                     , smtlib2-debug
                      , text >= 1.2.2.1
                      , containers

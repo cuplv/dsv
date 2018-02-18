@@ -4,6 +4,7 @@ import System.Exit
 import Data.Maybe
 import Language.SMTLib2
 import Language.SMTLib2.Pipe
+import Language.SMTLib2.Debug
 import Data.List (sort)
 import qualified Data.Set as S
 import Data.Set (Set)
@@ -36,19 +37,27 @@ tests =
   ,confl [Wd1,Wd2] (onJBA conLE) "LE - JBA"
   ,confl [Dp] (onJBA conGE) "GE - JBA"
   ,confl [R1,A1,Wd1] (conReadiness Wd1) "Ready 1?"
-  ,confl [R2,A2,Wd2] (conReadiness Wd2) "Ready 2?" ]
+  ,confl [R2,A2,Wd2] (conReadiness Wd2) "Ready 2?"
+  
+  -- KV bank account
+  -- ,ver (do e <- mkEffect (KVBank Withdraw); accord (KVBank Withdraw) e (onArray conLE)) True "Hmm"
+  ,confl [KVBank Withdraw] (onArray conLE) "LE - KV"
+  ,confl [KVBank Deposit] (onArray conGE) "GE - KV"
+  ,confl [KVBank Withdraw, KVBank Deposit] (onArray conEq) "EQ - KV"
+  ,confl [KVBank Withdraw, KVBank Deposit] conEq "EQ - KV all"
+  ,confl [KVBank Withdraw] conAllLE "LE - KV all 10"]
 
 -- | A test of the conflict avoidance set for a guard
 confl :: (Program o, Eq o)
       => [o] -- ^ Expected conflicting operations
-      -> ConReq SMTPipe (Store o SMTPipe) -- ^ Guard to test
+      -> ConReq (DebugBackend SMTPipe) (Store o (DebugBackend SMTPipe)) -- ^ Guard to test
       -> String -- ^ Helpful name for this test
       -> IO (Maybe String)
 confl os g = ver (conflictAvd allOps g) (S.fromList os)
 
 -- | A test running an experiment on an SMT solver.
 ver :: (Eq a)
-   => SMT SMTPipe a -- ^ Question for SMT solver
+   => SMT (DebugBackend SMTPipe) a -- ^ Question for SMT solver
    -> a -- ^ Answer it should give
    -> String -- ^ Helpful name for this test
    -> IO (Maybe String)

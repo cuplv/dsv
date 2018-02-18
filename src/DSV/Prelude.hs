@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeFamilies #-}
 -- {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module DSV.Prelude where
 
@@ -38,6 +39,21 @@ data ArrayIntM b = ArrayIntM (Expr b (ArrayType '[IntType] IntType))
 instance DataModel ArrayIntM where
   model = ArrayIntM <$> declareVar (array (int ::: Nil) int)
   modEq (ArrayIntM a) (ArrayIntM b) = a .==. b
+
+onArray :: (Backend b) => ConReq b (IntM b) -> ConReq b (ArrayIntM b)
+onArray con (ArrayIntM sn,ArrayIntM st) = 
+  do i <- declareVar int
+     assert $ (i .>=. cint 0) .&. (i .<. cint 10)
+     i <- cint 0
+     snI <- IntM <$> select1 sn i
+     stI <- IntM <$> select1 st i
+     con (snI,stI)
+
+conAllLE :: (Backend b) => ConReq b (ArrayIntM b)
+conAllLE (ArrayIntM sn, ArrayIntM st) =
+  sumUp sn [0..10] .<=. sumUp st [0..10]
+  where sumUp arr is = 
+          mapM (\i -> select1 arr (cint i)) is >>= plus
 
 top :: (Backend b) => Pr b (t b)
 top _ = true
@@ -149,8 +165,23 @@ data ABC = A | B | C deriving (Show,Eq,Ord)
 
 data KVBank = KVBank Bank deriving (Show,Eq,Ord)
 
--- instance Program KVBank where
---   type Store KVBank = undefined
+instance Program KVBank where
+  type Store KVBank = ArrayIntM
+  type Env KVBank = Prod IntM (Env Bank)
+  
+  allOps = map KVBank allOps
+  envConstraint _ (Prod (IntM i,n)) = 
+    and' [i .>=. cint 0
+         ,i .<. cint 10
+         ,envConstraint Withdraw n]
+  
+  opCon _ = conTop
+
+  opDef (KVBank o) (Prod (IntM i,n)) (ArrayIntM sn) (ArrayIntM st) = 
+    do snI <- IntM <$> select1 sn i
+       stI <- IntM <$> select1 st i
+       IntM stI' <- opDef o n snI stI
+       ArrayIntM <$> store1 st i stI'
 
 -- | A bank account requiring requests and approvals for withdrawals
 data JointBank = R1 -- ^ Request withdrawal for owner #1
