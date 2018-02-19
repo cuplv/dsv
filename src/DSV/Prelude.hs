@@ -42,9 +42,20 @@ instance DataModel ArrayIntM where
 
 onArray :: (Backend b) => ConReq b (IntM b) -> ConReq b (ArrayIntM b)
 onArray con (ArrayIntM sn,ArrayIntM st) = 
-  do i <- declareVar int
-     assert $ (i .>=. cint 0) .&. (i .<. cint 10)
-     i <- cint 0
+  do i0 <- cint 0
+     i1 <- cint 1
+     i2 <- cint 2
+     snI0 <- IntM <$> select1 sn i0
+     stI0 <- IntM <$> select1 st i0
+     snI1 <- IntM <$> select1 sn i1
+     stI1 <- IntM <$> select1 st i1
+     snI2 <- IntM <$> select1 sn i2
+     stI2 <- IntM <$> select1 st i2
+     con (snI0,stI0) .&. con (snI1,stI1) .&. con (snI2,stI2)
+
+onArray1 :: (Backend b) => ConReq b (IntM b) -> ConReq b (ArrayIntM b)
+onArray1 con (ArrayIntM sn,ArrayIntM st) = 
+  do i <- cint 1
      snI <- IntM <$> select1 sn i
      stI <- IntM <$> select1 st i
      con (snI,stI)
@@ -196,13 +207,13 @@ con1 :: (Backend b) => ConReq b (Store ABC b)
 con1 (IntM snap,IntM store) = (snap .==. cint 1) .==. (store .==. cint 1)
      
 
-data KVBank = KVBank Bank deriving (Show,Eq,Ord)
+data KVBank = KVBank Bank | On1 Bank | On2 Bank deriving (Show,Eq,Ord)
 
 instance Program KVBank where
   type Store KVBank = ArrayIntM
   type Env KVBank = Prod IntM (Env Bank)
   
-  allOps = map KVBank allOps
+  allOps = map KVBank allOps ++ map On1 allOps ++ map On2 allOps
   envConstraint _ (Prod (IntM i,n)) = 
     and' [i .>=. cint 0
          ,i .<. cint 10
@@ -215,6 +226,18 @@ instance Program KVBank where
        stI <- IntM <$> select1 st i
        IntM stI' <- opDef o n snI stI
        ArrayIntM <$> store1 st i stI'
+  opDef (On1 o) (Prod (_,n)) (ArrayIntM sn) (ArrayIntM st) = 
+    do i <- cint 1
+       sn1 <- IntM <$> select1 sn i
+       st1 <- IntM <$> select1 st i
+       IntM st1' <- opDef o n sn1 st1
+       ArrayIntM <$> store1 st i st1'
+  opDef (On2 o) (Prod (_,n)) (ArrayIntM sn) (ArrayIntM st) = 
+    do i <- cint 2
+       sn2 <- IntM <$> select1 sn i
+       st2 <- IntM <$> select1 st i
+       IntM st2' <- opDef o n sn2 st2
+       ArrayIntM <$> store1 st i st2'
 
 -- | A bank account requiring requests and approvals for withdrawals
 data JointBank = R1 -- ^ Request withdrawal for owner #1

@@ -14,7 +14,7 @@ import DSV.Prelude
 
 
 tests :: [IO (Maybe String)]
-tests = allTests
+tests = kvBank
 
 
 allTests = concat [sanity,bank,bankR,conspireBools,jointBank,kvBank,stateMachine]
@@ -50,15 +50,17 @@ jointBank =
   ,confl [R1,R2,A1,A2,Wd1,Wd2,Dp] conEq "EQ - JointBank"
   ,confl ([] :: [JointBank]) conTop "Top - JointBank"]
 kvBank = 
-  [confl [KVBank Withdraw] (onArray conLE) "LE - KV"
-  ,confl [KVBank Deposit] (onArray conGE) "GE - KV"
-  ,confl [KVBank Withdraw, KVBank Deposit] (onArray conEq) "EQ - KV"
-  ,confl [KVBank Withdraw, KVBank Deposit] conEq "EQ - KV all"
-  ,confl [KVBank Withdraw] conAllLE "LE - KV all 10"
-  ,confl [KVBank Deposit] conAllGE "GE - KV all 10"
-  ,confl [KVBank Withdraw, KVBank Deposit] conAllEq "Eq - KV all 10"
+  [confl [KVBank Withdraw,On1 Withdraw,On2 Withdraw] (onArray conLE) "LE - KV"
+  ,confl [KVBank Deposit,On1 Deposit,On2 Deposit] (onArray conGE) "GE - KV"
+  ,confl [KVBank Withdraw, KVBank Deposit,On1 Withdraw,On1 Deposit,On2 Withdraw,On2 Deposit] (onArray conEq) "EQ - KV"
+  ,confl [KVBank Withdraw,On1 Withdraw,On2 Withdraw] conAllLE "LE - KV all 10"
+  ,confl [KVBank Deposit,On1 Deposit,On2 Deposit] conAllGE "GE - KV all 10"
+  ,confl [KVBank Withdraw, KVBank Deposit,On1 Withdraw,On1 Deposit,On2 Withdraw,On2 Deposit] conAllEq "Eq - KV all 10"
 
-  ,confl [KVBank Withdraw, KVBank Deposit] conEq "Eq - KV total"
+  ,confl [KVBank Withdraw,On1 Withdraw] (onArray1 conLE) "LE - KV 1"
+  ,confl [KVBank Deposit,On1 Deposit] (onArray1 conGE) "GE - KV 1"
+
+  ,confl [KVBank Withdraw, KVBank Deposit ,On1 Withdraw,On1 Deposit,On2 Withdraw,On2 Deposit] conEq "Eq - KV total"
   ,confl ([] :: [KVBank]) conTop "Top - KVBank"]
 stateMachine = 
   [confl ([A,B]::[ABC]) con1 "1"
@@ -67,7 +69,7 @@ stateMachine =
   ,confl ([] :: [ABC]) conTop "Top - ABC"]
 
 -- | A test of the conflict avoidance set for a guard
-confl :: (Program o, Eq o)
+confl :: (Program o, Eq o, Show o)
       => [o] -- ^ Expected conflicting operations
       -> ConReq SMTPipe (Store o SMTPipe) -- ^ Guard to test
       -> String -- ^ Helpful name for this test
@@ -75,7 +77,7 @@ confl :: (Program o, Eq o)
 confl os g = ver (conflictAvd allOps g) (S.fromList os)
 
 -- | A test running an experiment on an SMT solver.
-ver :: (Eq a)
+ver :: (Eq a, Show a)
    => SMT SMTPipe a -- ^ Question for SMT solver
    -> a -- ^ Answer it should give
    -> String -- ^ Helpful name for this test
@@ -83,15 +85,16 @@ ver :: (Eq a)
 ver t = test (askSMT t)
 
 -- | Test that some action produces an output.
-test :: (Monad m, Eq a) 
+test :: (Monad m, Eq a, Show a)
      => m a -- ^ Action to test
      -> a -- ^ Output it should produce
      -> String -- ^ Helpful name for this test
      -> m (Maybe String)
-test t c s = do r <- (== c) <$> t
-                if r
+test t c s = do t' <- t
+                -- r <- (== c) <$> t
+                if t' == c
                    then return Nothing
-                   else return $ Just ("Failure: " ++ s)
+                   else return $ Just ("Failure: " ++ s ++ " : " ++ show t')
 
 main :: IO ()
 main = report tests
