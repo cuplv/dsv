@@ -4,7 +4,6 @@ import System.Exit
 import Data.Maybe
 import Language.SMTLib2
 import Language.SMTLib2.Pipe
-import Language.SMTLib2.Debug
 import Data.List (sort)
 import qualified Data.Set as S
 import Data.Set (Set)
