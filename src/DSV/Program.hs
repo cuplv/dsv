@@ -8,6 +8,7 @@ module DSV.Program
   , Effect
   , accord
   , conflictAvd
+  , accords
   , verifyOp
   , verifyProgram
   , mkOp
@@ -78,6 +79,10 @@ conflictAvd ofs g =
   where checkAcc o g = do e <- mkEffect o
                           result <- accord o e g
                           return result
+
+accords :: (Backend b, Program o) => [o] -> ConReq b (Store o b) -> SMT b (Set o)
+accords ofs g = do ca <- conflictAvd ofs g
+                   return (S.fromList ofs S.\\ ca)
 
 -- | Turn an op form into an op (model the parameters)
 mkOp :: (Backend b, Program o) => o -> SMT b (Oper b o)

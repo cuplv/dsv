@@ -7,40 +7,46 @@ import Language.SMTLib2.Pipe
 import Data.List (sort)
 import qualified Data.Set as S
 import Data.Set (Set)
+import Data.Time.Clock
 
 import DSV
 import DSV.Prelude
 
 
-tests :: [IO (Maybe String)]
-tests = kvBank
+tests :: [Batch]
+tests = allTests
 
 
-allTests = concat [sanity,bank,bankR,conspireBools,jointBank,kvBank,stateMachine]
+allTests = [bank,bankR,conspireBools,jointBank,kvBank,stateMachine]
+
+data Batch = Batch String [IO (Maybe String)]
 
 sanity =
   [ver (pure true |= \(IntM a) -> a .==. cint 2) False "Sanity 1"
   ,ver ((\(IntM a) -> a .==. cint 2) |= (\(IntM a) -> a .==. cint 2)) True "Sanity 2"]
 
-bank = 
+bank = Batch "Bank account"
   [confl [Withdraw] conLE "LE"
   ,confl [Deposit] conGE "GE"
 
   ,confl [Withdraw,Deposit] conEq "EQ"
   ,confl ([] :: [Bank]) conTop "Top - Bank"]
-bankR = 
+
+bankR = Batch "Bank account with reset"
   [confl [BankR Withdraw,Reset] conLE "LE - R"
   ,confl [BankR Deposit,Reset] conGE "GE - R"
 
   ,confl [BankR Withdraw,BankR Deposit,Reset] conEq "EQ - BankR"
   ,confl ([] :: [BankR]) conTop "Top - BankR"]
-conspireBools = 
+
+conspireBools = Batch "Conspiring booleans"
   [confl [E1] cfst "First"
   ,confl [E1,E2] csnd "Second"
 
   ,confl [E1,E2] conEq "Eq"
   ,confl ([] :: [ConspireBools]) conTop "Top - Conspire"]
-jointBank = 
+
+jointBank = Batch "Joint bank account"
   [confl [Wd1,Wd2] (onJBA conLE) "LE - JBA"
   ,confl [Dp] (onJBA conGE) "GE - JBA"
   ,confl [R1,A1,Wd1] (conReadiness Wd1) "Ready 1?"
@@ -48,7 +54,8 @@ jointBank =
 
   ,confl [R1,R2,A1,A2,Wd1,Wd2,Dp] conEq "EQ - JointBank"
   ,confl ([] :: [JointBank]) conTop "Top - JointBank"]
-kvBank = 
+
+kvBank = Batch "KV bank accounts"
   [confl [KVBank Withdraw,On1 Withdraw,On2 Withdraw] (onArray conLE) "LE - KV"
   ,confl [KVBank Deposit,On1 Deposit,On2 Deposit] (onArray conGE) "GE - KV"
   ,confl [KVBank Withdraw, KVBank Deposit,On1 Withdraw,On1 Deposit,On2 Withdraw,On2 Deposit] (onArray conEq) "EQ - KV"
@@ -61,7 +68,8 @@ kvBank =
 
   ,confl [KVBank Withdraw, KVBank Deposit ,On1 Withdraw,On1 Deposit,On2 Withdraw,On2 Deposit] conEq "Eq - KV total"
   ,confl ([] :: [KVBank]) conTop "Top - KVBank"]
-stateMachine = 
+
+stateMachine = Batch "State machine"
   [confl ([A,B]::[ABC]) con1 "1"
 
   ,confl [A,B] conEq "Eq - ABC"
@@ -75,6 +83,13 @@ confl :: (Program o, Eq o, Show o)
       -> IO (Maybe String)
 confl os g = ver (conflictAvd allOps g) (S.fromList os)
 
+accd :: (Program o, Eq o, Show o)
+     => [o] -- ^ Expected in-accord operations
+     -> ConReq SMTPipe (Store o SMTPipe) -- ^ Guard to test
+     -> String -- ^ Helpful name for this test
+     -> IO (Maybe String)
+accd os g = ver (accords allOps g) (S.fromList os)
+
 -- | A test running an experiment on an SMT solver.
 ver :: (Eq a, Show a)
    => SMT SMTPipe a -- ^ Question for SMT solver
@@ -84,22 +99,31 @@ ver :: (Eq a, Show a)
 ver t = test (askSMT t)
 
 -- | Test that some action produces an output.
-test :: (Monad m, Eq a, Show a)
-     => m a -- ^ Action to test
+test :: (Eq a, Show a)
+     => IO a -- ^ Action to test
      -> a -- ^ Output it should produce
      -> String -- ^ Helpful name for this test
-     -> m (Maybe String)
+     -> IO (Maybe String)
 test t c s = do t' <- t
-                -- r <- (== c) <$> t
                 if t' == c
                    then return Nothing
                    else return $ Just ("Failure: " ++ s ++ " : " ++ show t')
 
+testBatch :: Batch -> IO [String]
+testBatch (Batch name tests) = do
+  t0 <- getCurrentTime
+  fails <- catMaybes <$> sequence tests
+  t1 <- getCurrentTime
+  let total = t1 `diffUTCTime` t0
+  putStrLn $ "* " ++ name
+  putStrLn $ "  " ++ (show $ (1000 :: Float) * fromRational (toRational total)) ++ "ms"
+  return fails
+
 main :: IO ()
 main = report tests
 
-report :: [IO (Maybe String)] -> IO ()
-report rs = do fails <- catMaybes <$> sequence rs
+report :: [Batch] -> IO ()
+report rs = do fails <- concat <$> sequence (map testBatch rs)
                mapM_ print fails
                if fails == []
                   then print "All tests passed."
